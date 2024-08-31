@@ -1,0 +1,148 @@
+import requests
+import random
+import json
+import string
+import logging
+from tabulate import tabulate
+
+# Configure logging
+logging.basicConfig(filename='test_report.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Base URL for API
+base_url = "https://gorest.co.in"
+
+# Auth token for API requests
+auth_token = "Bearer 65b6f6ad51ba73eefdd65486c2d8449283eccc9044c6615d85b0e3b5e6fd8929"
+
+# Generate a random email address
+def generate_random_email():
+    domain = "automation.com"
+    email_length = 10
+    random_string = ''.join(random.choice(string.ascii_lowercase) for _ in range(email_length))
+    email = random_string + "@" + domain
+    return email
+
+# Track test results
+test_results = {
+    "GET": {"status": "Not Executed", "message": ""},
+    "POST": {"status": "Not Executed", "message": ""},
+    "PUT": {"status": "Not Executed", "message": ""},
+    "DELETE": {"status": "Not Executed", "message": ""}
+}
+
+# GET request to retrieve users
+def get_request():
+    url = f"{base_url}/public/v2/users"
+    headers = {"Authorization": auth_token}
+    try:
+        response = requests.get(url, headers=headers, verify=False)
+        response.raise_for_status()
+        json_data = response.json()
+        json_str = json.dumps(json_data, indent=4)
+        test_results["GET"]["status"] = "Passed"
+        test_results["GET"]["message"] = "GET request successful"
+        logging.info("GET request successful")
+        logging.info("Response: %s", json_str)
+        print(".......GET USER IS DONE.......")
+    except requests.RequestException as e:
+        test_results["GET"]["status"] = "Failed"
+        test_results["GET"]["message"] = f"GET request failed: {e}"
+        logging.error("GET request failed: %s", e)
+        print("GET request failed:", e)
+
+# POST request to create a new user
+def post_request():
+    url = f"{base_url}/public/v2/users"
+    headers = {"Authorization": auth_token}
+    data = {
+        "name": "Megha Mishra",
+        "email": generate_random_email(),
+        "gender": "female",
+        "status": "active"
+    }
+    try:
+        response = requests.post(url, json=data, headers=headers, verify=False)
+        response.raise_for_status()
+        json_data = response.json()
+        json_str = json.dumps(json_data, indent=4)
+        user_id = json_data["id"]
+        test_results["POST"]["status"] = "Passed"
+        test_results["POST"]["message"] = "POST request successful"
+        logging.info("POST request successful")
+        logging.info("Response: %s", json_str)
+        print("User ID ===>", user_id)
+        return user_id
+    except requests.RequestException as e:
+        test_results["POST"]["status"] = "Failed"
+        test_results["POST"]["message"] = f"POST request failed: {e}"
+        logging.error("POST request failed: %s", e)
+        print("POST request failed:", e)
+    except KeyError as e:
+        test_results["POST"]["status"] = "Failed"
+        test_results["POST"]["message"] = f"POST response did not contain 'id': {e}"
+        logging.error("POST response did not contain 'id': %s", e)
+        print("POST response error:", e)
+
+# PUT request to update user details
+def put_request(user_id):
+    url = f"{base_url}/public/v2/users/{user_id}"
+    headers = {"Authorization": auth_token}
+    data = {
+        "name": "Megha Mishra Testing API",
+        "email": generate_random_email(),
+        "gender": "female",
+        "status": "inactive"
+    }
+    try:
+        response = requests.put(url, json=data, headers=headers, verify=False)
+        response.raise_for_status()
+        json_data = response.json()
+        json_str = json.dumps(json_data, indent=4)
+        test_results["PUT"]["status"] = "Passed"
+        test_results["PUT"]["message"] = "PUT request successful"
+        logging.info("PUT request successful")
+        logging.info("Response: %s", json_str)
+        print(".......PUT/Update USER IS DONE.......")
+    except requests.RequestException as e:
+        test_results["PUT"]["status"] = "Failed"
+        test_results["PUT"]["message"] = f"PUT request failed: {e}"
+        logging.error("PUT request failed: %s", e)
+        print("PUT request failed:", e)
+
+# DELETE request to remove a user
+def delete_request(user_id):
+    url = f"{base_url}/public/v2/users/{user_id}"
+    headers = {"Authorization": auth_token}
+    try:
+        response = requests.delete(url, headers=headers, verify=False)
+        response.raise_for_status()
+        test_results["DELETE"]["status"] = "Passed"
+        test_results["DELETE"]["message"] = "DELETE request successful"
+        logging.info("DELETE request successful")
+        print(".......DELETE USER IS DONE.......")
+    except requests.RequestException as e:
+        test_results["DELETE"]["status"] = "Failed"
+        test_results["DELETE"]["message"] = f"DELETE request failed: {e}"
+        logging.error("DELETE request failed: %s", e)
+        print("DELETE request failed:", e)
+
+# Generate summary report
+def generate_report():
+    headers = ["Test Case", "Status", "Message"]
+    table = [[key, value["status"], value["message"]] for key, value in test_results.items()]
+    report = tabulate(table, headers=headers, tablefmt="grid")
+    print(report)
+    with open("test_summary_report.txt", "w") as f:
+        f.write(report)
+
+# Execute the requests and handle test cases
+def run_tests():
+    get_request()
+    user_id = post_request()
+    if user_id:  # Proceed with update and delete if user_id is successfully created
+        put_request(user_id)
+        delete_request(user_id)
+    generate_report()
+
+if __name__ == "__main__":
+    run_tests()
